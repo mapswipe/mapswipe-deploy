@@ -1,0 +1,26 @@
+# TODO: Use this instead https://github.com/casey/just?
+# TODO: Add this to README? go install github.com/go-task/task/v3/cmd/task@latest
+
+version: '3'
+
+env:
+  MANAGER_DASHBOARD_COMMIT_HASH:
+    sh: ./scripts/get_commit_hash.sh .git/modules/manager-dashboard
+  COMMUNITY_DASHBOARD_COMMIT_HASH:
+    sh: ./scripts/get_commit_hash.sh .git/modules/community-dashboard
+
+tasks:
+  # Web apps
+  web-build-manager:
+    cmds:
+      - docker compose --profile web-builds up --build --abort-on-container-exit manager-dashboard
+
+  web-build-community:
+    cmds:
+      - docker compose --profile web-builds up --build --abort-on-container-exit community-dashboard
+
+  web-builds:
+    cmds:
+      - task: web-build-community
+      - task: web-build-manager
+      - echo "Success"

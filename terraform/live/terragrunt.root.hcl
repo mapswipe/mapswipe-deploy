@@ -4,7 +4,8 @@ locals {
 }
 
 remote_state {
-  backend = "gcs"
+  disable_init = tobool(get_env("DISABLE_INIT", "false")) # Used for CI lint
+  backend      = "gcs"
   generate = {
     path      = "backend.tf"
     if_exists = "overwrite"

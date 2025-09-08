@@ -86,6 +86,63 @@ services:
     profiles:
       - core
 
+
+  # Manager Dashboard
+  manager-dashboard:
+    build:
+      context: manager-dashboard/
+      target: builder
+    tty: true
+    environment:
+      APP_ENVIRONMENT: ${MAPSWIPE_ENVIRONMENT:-PROD}
+      APP_COMMIT_HASH: ${MANAGER_DASHBOARD_COMMIT_HASH}
+    command: sh -c 'pnpm generate:type && pnpm build'
+    volumes:
+      - ./data/web-builds/manager-dashboard:/code/build
+    env_file:
+      - ./env/manager-dashboard.env
+    profiles:
+      - web-builds
+
+  # Community Dashboard
+  community-dashboard:
+    build:
+      context: community-dashboard/
+      target: builder
+    tty: true
+    environment:
+      APP_ENVIRONMENT: ${MAPSWIPE_ENVIRONMENT:-PROD}
+      APP_COMMIT_HASH: ${COMMUNITY_DASHBOARD_COMMIT_HASH}
+    command: sh -c 'pnpm generate:type && pnpm build'
+    volumes:
+      - ./data/web-builds/community-dashboard:/code/build
+    env_file:
+      - ./env/community-dashboard.env
+    profiles:
+      - web-builds
+
+  caddy:
+    image: caddy:2.10.2
+    restart: unless-stopped
+    volumes:
+      # Caddy config
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/caddy/data/:/data
+      - ./data/caddy/config/:/config
+      # Static files
+      # -- Dashboards
+      - ./data/web-builds/manager-dashboard:/assets/manager-dashboard:ro
+      - ./data/web-builds/community-dashboard:/assets/community-dashboard:ro
+    environment:
+      CADDY_EMAIL: ${CADDY_EMAIL?error}
+      CADDY_HOST_MANAGER_DASHBOARD: ${CADDY_HOST_MANAGER_DASHBOARD?error}
+      CADDY_HOST_COMMUNITY_DASHBOARD: ${CADDY_HOST_COMMUNITY_DASHBOARD?error}
+    ports:
+      - 80:80
+      - 443:443
+    profiles:
+      - core
+
 secrets:
    gc_service_account_key:
      file: secrets/gc_service_account_key.json

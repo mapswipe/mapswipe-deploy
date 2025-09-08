@@ -1,0 +1,23 @@
+(file_server_config) {
+    encode gzip
+    file_server
+}
+
+
+{$CADDY_HOST_MANAGER_DASHBOARD} {
+    handle {
+        try_files {path} /index.html
+        root * /assets/manager-dashboard
+        import file_server_config
+    }
+}
+
+
+{$CADDY_HOST_COMMUNITY_DASHBOARD} {
+    handle {
+        try_files {path} /index.html
+        root * /assets/manager-dashboard
+        import file_server_config
+    }
+}
+

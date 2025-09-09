@@ -98,7 +98,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD?error}
       # pgBackRest
       PGBACKREST_REPO1_TYPE: gcs
-      PGBACKREST_REPO1_GCS_KEY: /run/secrets/gc_service_account_key
+      PGBACKREST_REPO1_GCS_KEY: /run/secrets/pgbackrest_gc_service_account_key
       PGBACKREST_REPO1_GCS_BUCKET: ${PGBACKREST_REPO1_GCS_BUCKET?error}
       PGBACKREST_REPO1_PATH: ${PGBACKREST_REPO1_PATH?error}
     command: postgres -c archive_mode=on -c archive_command="pgbackrest --stanza=main archive-push %p"
@@ -142,7 +142,7 @@ services:
       ofelia.job-exec.expire.no-overlap: 1
       # TODO: validate?
     secrets:
-      - gc_service_account_key
+      - pgbackrest_gc_service_account_key
     profiles:
       - core
 
@@ -239,5 +239,5 @@ volumes:
   ipython_data_local:
 
 secrets:
-   gc_service_account_key:
-     file: secrets/gc_service_account_key.json
+   pgbackrest_gc_service_account_key:
+     file: secrets/pgbackrest_gc_service_account_key.json

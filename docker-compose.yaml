@@ -98,7 +98,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD?error}
       # pgBackRest
       PGBACKREST_REPO1_TYPE: gcs
-      PGBACKREST_REPO1_GCS_KEY: /run/secrets/gc_service_account_key
+      PGBACKREST_REPO1_GCS_KEY: /run/secrets/pgbackrest_gc_service_account_key
       PGBACKREST_REPO1_GCS_BUCKET: ${PGBACKREST_REPO1_GCS_BUCKET?error}
       PGBACKREST_REPO1_PATH: ${PGBACKREST_REPO1_PATH?error}
     command: postgres -c archive_mode=on -c archive_command="pgbackrest --stanza=main archive-push %p"
@@ -117,7 +117,7 @@ services:
       retries: 5
     labels:
       # NOTE: the cron format starts with seconds, instead of minutes. https://pkg.go.dev/github.com/robfig/cron?utm_source=godoc
-      ofelia.enabled: "false"
+      ofelia.enabled: "true"
       # TODO: Update this?
       # NOTE: Make sure to align this with the retention policies ./postgres/pgbackrest/pgbackrest.conf
       # Incremental Backups every day (At 22:00)
@@ -142,7 +142,7 @@ services:
       ofelia.job-exec.expire.no-overlap: 1
       # TODO: validate?
     secrets:
-      - gc_service_account_key
+      - pgbackrest_gc_service_account_key
     profiles:
       - core
 
@@ -206,6 +206,8 @@ services:
     profiles:
       - web-builds
 
+  # TODO: firebase deploy
+
   caddy:
     image: caddy:2.10.2
     restart: unless-stopped
@@ -239,5 +241,5 @@ volumes:
   ipython_data_local:
 
 secrets:
-   gc_service_account_key:
-     file: secrets/gc_service_account_key.json
+   pgbackrest_gc_service_account_key:
+     file: secrets/pgbackrest_gc_service_account_key.json

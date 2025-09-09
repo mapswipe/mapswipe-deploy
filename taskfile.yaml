@@ -1,5 +1,4 @@
 # TODO: Use this instead https://github.com/casey/just?
-# TODO: Add this to README? go install github.com/go-task/task/v3/cmd/task@latest
 
 version: '3'
 
@@ -43,11 +42,6 @@ tasks:
       - task: backend-build-worker
       - echo "Success"
 
-  backend-deploy:
-    cmds:
-      - task: backend-builds
-      - docker compose --profile core up -d web worker worker-beat
-
   backend-migration:
     cmds:
       - docker compose --profile core run --rm web ./manage.py migrate
@@ -61,15 +55,21 @@ tasks:
       - task: backend-migration
       - task: backend-collect-static
 
+  backend-deploy:
+    cmds:
+      - task: backend-builds
+      - docker compose --profile core up -d web worker worker-beat
+      - task: backend-post-deploy
+
   # Misc
   caddy-deploy:
     cmd: docker compose --profile core up -d caddy
-
-  logs:
-    cmd: docker compose --profile core logs -f --tail 1000 {{.CLI_ARGS}}
 
   deploy:
     cmds:
       - task: backend-deploy
       - task: web-builds
       - task: caddy-deploy
+
+  logs:
+    cmd: docker compose --profile core logs -f --tail 1000 {{.CLI_ARGS}}

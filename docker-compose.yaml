@@ -1,5 +1,65 @@
 name: ${COMPOSE_PROJECT_NAME?error}
 
+x-server: &base_server_setup
+  build:
+    context: ./backend/
+    tags:
+      - mapswipe/mapswipe-backend:${BACKEND_DOCKER_TAG:-latest}
+  # Used for python debugging.
+  stdin_open: true
+  tty: true
+  restart: unless-stopped
+  environment: &base_server_environments
+    APP_RELEASE: ${BACKEND_COMMIT_HASH}
+    DEBUG: ${BACKEND_DEBUG:-false}
+    ENABLE_DEBUG_TOOLBAR: ${BACKEND_ENABLE_DEBUG_TOOLBAR:-false}
+    APP_ENVIRONMENT: ${MAPSWIPE_ENVIRONMENT:-PROD}
+    ENABLE_STRAWBERRY_GRAPHIQL: ${BACKEND_ENABLE_STRAWBERRY_GRAPHIQL:-false}
+    # Postgres
+    POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+    POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+    POSTGRES_DB: ${POSTGRES_DB:-mapswipe}
+    POSTGRES_USER: ${POSTGRES_USER?error}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD?error}
+    # Redis (Dragonfly)
+    CELERY_REDIS_URL: ${BACKEND_CELERY_REDIS_URL:-redis://dragonfly:6379/0}
+    CACHE_REDIS_URL: ${BACKEND_CACHE_REDIS_URL:-redis://dragonfly:6379/1}
+    TEST_CACHE_REDIS_URL: ${BACKEND_TEST_CACHE_REDIS_URL:-redis://dragonfly:6379/11}
+    # Email (TODO: Dummy config)
+    EMAIL_HOST: ${BACKEND_EMAIL_HOST:-dummy}
+    EMAIL_PORT: ${BACKEND_EMAIL_PORT:-1025}
+    EMAIL_USE_TLS: ${BACKEND_EMAIL_USE_TLS:-false}
+    EMAIL_HOST_USER: ${BACKEND_EMAIL_HOST_USER:-dummy}
+    EMAIL_HOST_PASSWORD: ${BACKEND_EMAIL_HOST_PASSWORD:-dummy}
+    DEFAULT_FROM_EMAIL: ${BACKEND_DEFAULT_FROM_EMAIL:-Mapswipe Dev <dev@mapswipe.org>}
+    # Firebase
+    FIREBASE_EMULATOR_USE: false
+    # Storage
+    MEDIA_ROOT: "/data/media"
+    STATIC_ROOT: "/data/static"
+    MEDIA_URL: "media/"
+    STATIC_URL: "static/"
+  env_file:
+    - ./env/backend.env
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  volumes:
+    - ./data/backend/static:/data/static
+    - ./data/backend/media:/data/media
+    - ipython_data_local:/root/.ipython/profile_default   # persist ipython data, including ipython history
+  depends_on:
+    - postgres
+    - dragonfly
+  profiles:
+    - core
+
+
+x-worker: &base_worker_setup
+  <<: *base_server_setup
+  environment:
+    <<: *base_server_environments
+    APP_TYPE: "WORKER-BEAT"
+
 services:
   ofelia:
     image: mcuadros/ofelia:0.3.17
@@ -86,6 +146,31 @@ services:
     profiles:
       - core
 
+  # Redis alternative
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.33.1
+    restart: unless-stopped
+    ulimits:
+      memlock: -1
+    volumes:
+      - dragonflydata:/data
+    profiles:
+      - core
+
+  web:
+    <<: *base_server_setup
+    environment:
+      <<: *base_server_environments
+      APP_TYPE: "WEB"
+    command: bash -c "/code/misc/prod/run_web.sh"
+
+  worker-beat:
+    <<: *base_worker_setup
+    command: bash -c "/code/misc/prod/run_worker_beat.sh"
+
+  worker:
+    <<: *base_worker_setup
+    command: bash -c "/code/misc/prod/run_worker.sh"
 
   # Manager Dashboard
   manager-dashboard:
@@ -130,18 +215,28 @@ services:
       - ./data/caddy/data/:/data
       - ./data/caddy/config/:/config
       # Static files
+      # -- Backend
+      - ./data/backend/static:/assets/backend/static:ro
+      - ./data/backend/media:/assets/backend/media:ro
       # -- Dashboards
       - ./data/web-builds/manager-dashboard:/assets/manager-dashboard:ro
       - ./data/web-builds/community-dashboard:/assets/community-dashboard:ro
     environment:
       CADDY_EMAIL: ${CADDY_EMAIL?error}
+      CADDY_HOST_BACKEND: ${CADDY_HOST_BACKEND?error}
       CADDY_HOST_MANAGER_DASHBOARD: ${CADDY_HOST_MANAGER_DASHBOARD?error}
       CADDY_HOST_COMMUNITY_DASHBOARD: ${CADDY_HOST_COMMUNITY_DASHBOARD?error}
     ports:
       - 80:80
       - 443:443
+    depends_on:
+      - web
     profiles:
       - core
+
+volumes:
+  dragonflydata:
+  ipython_data_local:
 
 secrets:
    gc_service_account_key:

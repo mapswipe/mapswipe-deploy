@@ -1,8 +1,8 @@
 [submodule "mapswipe-firebase"]
-	path = mapswipe-firebase
+	path = firebase
 	url = git@github.com:mapswipe/mapswipe-firebase.git
 [submodule "mapswipe-backend"]
-	path = mapswipe-backend
+	path = backend
 	url = git@github.com:mapswipe/mapswipe-backend.git
 [submodule "community-dashboard"]
 	path = community-dashboard

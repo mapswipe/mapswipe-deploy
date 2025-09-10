@@ -1,0 +1,47 @@
+name: Pre commit
+
+on:
+  push:
+
+jobs:
+  pre_commit_checks:
+    name: Pre-Commit checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@main
+        with:
+          submodules: true
+
+      - name: Generate fake ./terraform/live/secrets.auto.tfvars
+        run: |
+          echo "project_id_map = { stage = \"mapswipe\" }" > ./terraform/live/secrets.auto.tfvars
+
+      # TODO: Cache plugins?
+      - uses: terraform-linters/setup-tflint@v5
+        name: Setup TFLint
+        with:
+          tflint_version: v0.52.0
+
+      - name: Install Terragrunt and OpenTofu
+        uses: gruntwork-io/terragrunt-action@v3
+        with:
+          # TODO: Use mise instead? https://github.com/gruntwork-io/terragrunt-action#tool-version-management
+          tg_version: 0.80.4
+          tofu_version: v1.10.5
+
+      - name: Initialize tofu without any backend
+        run: |
+          # Find all directories containing terragrunt.hcl
+          find . -type f -name "terragrunt.hcl" | while read hcl_file; do
+            dir=$(dirname "$hcl_file")
+            echo "Entering directory: $dir"
+            (
+              cd "$dir" || exit
+              tofu init -backend=false
+            )
+          done
+
+      - uses: pre-commit/action@main
+        env:
+          DISABLE_INIT: true

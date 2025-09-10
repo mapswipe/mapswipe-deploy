@@ -1,0 +1,75 @@
+# TODO: Use this instead https://github.com/casey/just?
+
+version: '3'
+
+env:
+  MANAGER_DASHBOARD_COMMIT_HASH:
+    sh: ./scripts/get_commit_hash.sh .git/modules/manager-dashboard
+  COMMUNITY_DASHBOARD_COMMIT_HASH:
+    sh: ./scripts/get_commit_hash.sh .git/modules/community-dashboard
+  BACKEND_COMMIT_HASH:
+    sh: ./scripts/get_commit_hash.sh .git/modules/mapswipe-backend
+
+tasks:
+  # Web apps
+  web-build-manager:
+    cmds:
+      - docker compose --profile web-builds up --build --abort-on-container-exit manager-dashboard
+
+  web-build-community:
+    cmds:
+      - docker compose --profile web-builds up --build --abort-on-container-exit community-dashboard
+
+  web-builds:
+    cmds:
+      - task: web-build-community
+      - task: web-build-manager
+      - echo "Success"
+
+  # Backend
+  backend-build-web:
+    cmds:
+      - docker compose --profile core build web
+
+  backend-build-worker:
+    cmds:
+      - docker compose --profile core build worker
+      - docker compose --profile core build worker-beat
+
+  backend-builds:
+    cmds:
+      - task: backend-build-web
+      - task: backend-build-worker
+      - echo "Success"
+
+  backend-migration:
+    cmds:
+      - docker compose --profile core run --rm web ./manage.py migrate
+
+  backend-collect-static:
+    cmds:
+      - docker compose --profile core run --rm web ./manage.py collectstatic --noinput
+
+  backend-post-deploy:
+    cmds:
+      - task: backend-migration
+      - task: backend-collect-static
+
+  backend-deploy:
+    cmds:
+      - task: backend-builds
+      - docker compose --profile core up -d web worker worker-beat
+      - task: backend-post-deploy
+
+  # Misc
+  caddy-deploy:
+    cmd: docker compose --profile core up -d caddy
+
+  deploy:
+    cmds:
+      - task: backend-deploy
+      - task: web-builds
+      - task: caddy-deploy
+
+  logs:
+    cmd: docker compose --profile core logs -f --tail 1000 {{.CLI_ARGS}}

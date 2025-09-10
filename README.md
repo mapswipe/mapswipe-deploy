@@ -10,7 +10,7 @@ git config --global url."https://github.com/".insteadOf "git@github.com:"
 
 Clone and pull all submodules
 ```bash
-git clone git@github.com:mapswipe/mapswipe-deploy.git --branch feat/pre-deployment-setup
+git clone git@github.com:mapswipe/mapswipe-deploy.git
 cd mapswipe-deploy
 git submodule update --init --recursive
 ```
@@ -34,6 +34,10 @@ touch secrets/pgbackrest_gc_service_account_key.json
 ```
 
 ## Apply changes
+
+The `task` tool is used to set up a pre-alias.
+> https://taskfile.dev/
+
 
 ```bash
 task --list-all

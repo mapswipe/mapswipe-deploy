@@ -1,7 +1,5 @@
 #!/bin/bash
 
-#!/bin/bash
-
 # Set the base Git directory (default to current .git directory)
 BASE_DIR="${1:-.git}"
 HEAD_PATH="$BASE_DIR/HEAD"

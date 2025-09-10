@@ -117,7 +117,7 @@ services:
       retries: 5
     labels:
       # NOTE: the cron format starts with seconds, instead of minutes. https://pkg.go.dev/github.com/robfig/cron?utm_source=godoc
-      ofelia.enabled: "false"
+      ofelia.enabled: "true"
       # TODO: Update this?
       # NOTE: Make sure to align this with the retention policies ./postgres/pgbackrest/pgbackrest.conf
       # Incremental Backups every day (At 22:00)
@@ -205,6 +205,8 @@ services:
       - ./env/community-dashboard.env
     profiles:
       - web-builds
+
+  # TODO: firebase deploy
 
   caddy:
     image: caddy:2.10.2

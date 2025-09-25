@@ -1,0 +1,43 @@
+(file_server_config) {
+    encode gzip
+    file_server
+}
+
+
+{$CADDY_HOST_BACKEND} {
+    request_body {
+        max_size 10MB
+    }
+
+    handle_path /static/* {
+        root * /assets/backend/static
+        import file_server_config
+    }
+
+    handle_path /media/* {
+        root * /assets/backend/media
+        import file_server_config
+    }
+
+    handle {
+        reverse_proxy http://web:80
+    }
+}
+
+
+{$CADDY_HOST_MANAGER_DASHBOARD} {
+    handle {
+        try_files {path} /index.html
+        root * /assets/manager-dashboard
+        import file_server_config
+    }
+}
+
+
+{$CADDY_HOST_COMMUNITY_DASHBOARD} {
+    handle {
+        try_files {path} /index.html
+        root * /assets/community-dashboard
+        import file_server_config
+    }
+}

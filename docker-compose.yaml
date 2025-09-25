@@ -1,0 +1,245 @@
+name: ${COMPOSE_PROJECT_NAME?error}
+
+x-server: &base_server_setup
+  build:
+    context: ./backend/
+    tags:
+      - mapswipe/mapswipe-backend:${BACKEND_DOCKER_TAG:-latest}
+  # Used for python debugging.
+  stdin_open: true
+  tty: true
+  restart: unless-stopped
+  environment: &base_server_environments
+    APP_RELEASE: ${BACKEND_COMMIT_HASH}
+    DEBUG: ${BACKEND_DEBUG:-false}
+    ENABLE_DEBUG_TOOLBAR: ${BACKEND_ENABLE_DEBUG_TOOLBAR:-false}
+    APP_ENVIRONMENT: ${MAPSWIPE_ENVIRONMENT:-PROD}
+    ENABLE_STRAWBERRY_GRAPHIQL: ${BACKEND_ENABLE_STRAWBERRY_GRAPHIQL:-false}
+    # Postgres
+    POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+    POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+    POSTGRES_DB: ${POSTGRES_DB:-mapswipe}
+    POSTGRES_USER: ${POSTGRES_USER?error}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD?error}
+    # Redis (Dragonfly)
+    CELERY_REDIS_URL: ${BACKEND_CELERY_REDIS_URL:-redis://dragonfly:6379/0}
+    CACHE_REDIS_URL: ${BACKEND_CACHE_REDIS_URL:-redis://dragonfly:6379/1}
+    TEST_CACHE_REDIS_URL: ${BACKEND_TEST_CACHE_REDIS_URL:-redis://dragonfly:6379/11}
+    # Email (TODO: Dummy config)
+    EMAIL_HOST: ${BACKEND_EMAIL_HOST:-dummy}
+    EMAIL_PORT: ${BACKEND_EMAIL_PORT:-1025}
+    EMAIL_USE_TLS: ${BACKEND_EMAIL_USE_TLS:-false}
+    EMAIL_HOST_USER: ${BACKEND_EMAIL_HOST_USER:-dummy}
+    EMAIL_HOST_PASSWORD: ${BACKEND_EMAIL_HOST_PASSWORD:-dummy}
+    DEFAULT_FROM_EMAIL: ${BACKEND_DEFAULT_FROM_EMAIL:-Mapswipe Dev <dev@mapswipe.org>}
+    # Firebase
+    FIREBASE_EMULATOR_USE: false
+    # Storage
+    MEDIA_ROOT: "/data/media"
+    STATIC_ROOT: "/data/static"
+    MEDIA_URL: "media/"
+    STATIC_URL: "static/"
+  env_file:
+    - ./env/backend.env
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  volumes:
+    - ./data/backend/static:/data/static
+    - ./data/backend/media:/data/media
+    - ipython_data_local:/root/.ipython/profile_default   # persist ipython data, including ipython history
+  depends_on:
+    - postgres
+    - dragonfly
+  profiles:
+    - core
+
+
+x-worker: &base_worker_setup
+  <<: *base_server_setup
+  environment:
+    <<: *base_server_environments
+    APP_TYPE: "WORKER-BEAT"
+
+services:
+  ofelia:
+    image: mcuadros/ofelia:0.3.17
+    command: daemon --docker -f label=com.docker.compose.project=${COMPOSE_PROJECT_NAME?error}
+    restart: unless-stopped
+    volumes:
+      - ./data/ofelia/:/logs
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      # File log
+      ofelia.save-folder: /logs
+      ofelia.save-only-on-error: 0
+      # Slack
+      ofelia.slack-webhook: ${OFELIA_SLACK_WEBHOOK?error}
+      ofelia.slack-only-on-error: 1
+      # Folder Cleanup
+      # Disk check (Every hour)
+      ofelia.job-local.cleanup.schedule: "@hourly"
+      ofelia.job-local.cleanup.command: sh -c "_ENV=${OFELIA_PROJECT_NAME?error} find /logs/ -type f -mtime +7 -delete -print"
+    profiles:
+      - core
+
+  # Backend
+  postgres:
+    build:
+      context: ./postgres/
+      dockerfile: Dockerfile
+      target: postgis
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:${POSTGRES_DB_LOCAL_EXPOSE_PORT:-5432}:5432
+    environment:
+      # NOTE: This config is only used for db first startup only
+      POSTGRES_DB: ${POSTGRES_DB:-mapswipe}
+      POSTGRES_USER: ${POSTGRES_USER?error}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD?error}
+      # pgBackRest
+      PGBACKREST_REPO1_TYPE: gcs
+      PGBACKREST_REPO1_GCS_KEY: /run/secrets/pgbackrest_gc_service_account_key
+      PGBACKREST_REPO1_GCS_BUCKET: ${PGBACKREST_REPO1_GCS_BUCKET?error}
+      PGBACKREST_REPO1_PATH: ${PGBACKREST_REPO1_PATH?error}
+    command: postgres -c archive_mode=on -c archive_command="pgbackrest --stanza=main archive-push %p"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      # pgBackrest
+      - ./data/pgbackrest/log/:/var/log/pgbackrest/
+      - ./postgres/pgbackrest/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:ro
+    post_start:
+      - command: /pgbackrest-setup.sh
+        user: root
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      # NOTE: the cron format starts with seconds, instead of minutes. https://pkg.go.dev/github.com/robfig/cron?utm_source=godoc
+      ofelia.enabled: "true"
+      # TODO: Update this?
+      # NOTE: Make sure to align this with the retention policies ./postgres/pgbackrest/pgbackrest.conf
+      # Incremental Backups every day (At 22:00)
+      ofelia.job-exec.incr.schedule: "0 0 22 * * *"
+      ofelia.job-exec.incr.command: sh -c "_ENV=${OFELIA_PROJECT_NAME?error} pgbackrest --stanza=main backup --type=incr"
+      ofelia.job-exec.incr.user: "postgres"
+      ofelia.job-exec.incr.no-overlap: 1
+      # Differential backup every week (At 02:30 on Monday)
+      ofelia.job-exec.diff.schedule: "0 30 2 * * 1"
+      ofelia.job-exec.diff.command: sh -c "_ENV=${OFELIA_PROJECT_NAME?error} pgbackrest --stanza=main backup --type=diff"
+      ofelia.job-exec.diff.user: "postgres"
+      ofelia.job-exec.diff.no-overlap: 1
+      # Full backup every month (At 10:00 on day-of-month 1)
+      ofelia.job-exec.full.schedule: "0 0 10 1 * *"
+      ofelia.job-exec.full.command: sh -c "_ENV=${OFELIA_PROJECT_NAME?error} pgbackrest --stanza=main backup --type=full"
+      ofelia.job-exec.full.user: "postgres"
+      ofelia.job-exec.full.no-overlap: 1
+      # Expire every day (At 01:30)
+      ofelia.job-exec.expire.schedule: "0 30 01 * * *"
+      ofelia.job-exec.expire.command: sh -c "_ENV=${OFELIA_PROJECT_NAME?error} pgbackrest --stanza=main expire"
+      ofelia.job-exec.expire.user: "postgres"
+      ofelia.job-exec.expire.no-overlap: 1
+      # TODO: validate?
+    secrets:
+      - pgbackrest_gc_service_account_key
+    profiles:
+      - core
+
+  # Redis alternative
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.33.1
+    restart: unless-stopped
+    ulimits:
+      memlock: -1
+    volumes:
+      - dragonflydata:/data
+    profiles:
+      - core
+
+  web:
+    <<: *base_server_setup
+    environment:
+      <<: *base_server_environments
+      APP_TYPE: "WEB"
+    command: bash -c "/code/misc/prod/run_web.sh"
+
+  worker-beat:
+    <<: *base_worker_setup
+    command: bash -c "/code/misc/prod/run_worker_beat.sh"
+
+  worker:
+    <<: *base_worker_setup
+    command: bash -c "/code/misc/prod/run_worker.sh"
+
+  # Manager Dashboard
+  manager-dashboard:
+    build:
+      context: manager-dashboard/
+      target: builder
+    tty: true
+    environment:
+      APP_ENVIRONMENT: ${MAPSWIPE_ENVIRONMENT:-PROD}
+      APP_COMMIT_HASH: ${MANAGER_DASHBOARD_COMMIT_HASH}
+    command: sh -c 'pnpm generate:type && pnpm build'
+    volumes:
+      - ./data/web-builds/manager-dashboard:/code/build
+    env_file:
+      - ./env/manager-dashboard.env
+    profiles:
+      - web-builds
+
+  # Community Dashboard
+  community-dashboard:
+    build:
+      context: community-dashboard/
+      target: builder
+    tty: true
+    environment:
+      APP_ENVIRONMENT: ${MAPSWIPE_ENVIRONMENT:-PROD}
+      APP_COMMIT_HASH: ${COMMUNITY_DASHBOARD_COMMIT_HASH}
+    command: sh -c 'pnpm generate:type && pnpm build'
+    volumes:
+      - ./data/web-builds/community-dashboard:/code/build
+    env_file:
+      - ./env/community-dashboard.env
+    profiles:
+      - web-builds
+
+  # TODO: firebase deploy
+
+  caddy:
+    image: caddy:2.10.2
+    restart: unless-stopped
+    volumes:
+      # Caddy config
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/caddy/data/:/data
+      - ./data/caddy/config/:/config
+      # Static files
+      # -- Backend
+      - ./data/backend/static:/assets/backend/static:ro
+      - ./data/backend/media:/assets/backend/media:ro
+      # -- Dashboards
+      - ./data/web-builds/manager-dashboard:/assets/manager-dashboard:ro
+      - ./data/web-builds/community-dashboard:/assets/community-dashboard:ro
+    environment:
+      CADDY_EMAIL: ${CADDY_EMAIL?error}
+      CADDY_HOST_BACKEND: ${CADDY_HOST_BACKEND?error}
+      CADDY_HOST_MANAGER_DASHBOARD: ${CADDY_HOST_MANAGER_DASHBOARD?error}
+      CADDY_HOST_COMMUNITY_DASHBOARD: ${CADDY_HOST_COMMUNITY_DASHBOARD?error}
+    ports:
+      - 80:80
+      - 443:443
+    depends_on:
+      - web
+    profiles:
+      - core
+
+volumes:
+  dragonflydata:
+  ipython_data_local:
+
+secrets:
+   pgbackrest_gc_service_account_key:
+     file: secrets/pgbackrest_gc_service_account_key.json

@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  submodules_check:
+    name: Submodules check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+        with:
+          submodules: 'recursive'
+          fetch-tags: true
+          fetch-depth: 100
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: '.python-version'
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: uv run
+        run: uv run check_submodules.py

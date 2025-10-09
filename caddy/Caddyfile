@@ -5,24 +5,31 @@
 
 
 {$CADDY_HOST_BACKEND} {
+    encode gzip zstd
+    root * /assets/backend/
+
     request_body {
         max_size 10MB
     }
 
-    handle_path /static/* {
-        root * /assets/backend/static
-        import file_server_config
+    @isStatic {
+        path /static/* /media/*
     }
-
-    handle_path /media/* {
-        root * /assets/backend/media
-        import file_server_config
+    @notStatic {
+        not path /static/* /media/*
     }
+    reverse_proxy @notStatic web:80 {
+        header_up X-Forwarded-Proto https
+    }
+    file_server
 
-    handle {
-        reverse_proxy http://web:80
+    header @isStatic {
+        Access-Control-Allow-Origin "*"
+        Access-Control-Request-Methods "GET"
+        Access-Control-Allow-Headers Content-Type
     }
 }
+
 
 
 {$CADDY_HOST_MANAGER_DASHBOARD} {

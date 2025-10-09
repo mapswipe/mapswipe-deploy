@@ -1,19 +1,9 @@
 resource "google_storage_bucket" "db_backup_bucket_name" {
-  name     = "mapswipe-postgres-backups-${var.env_name}"
-  location = var.gcs_region
-  # storage_class = "NEARLINE"
+  name          = "mapswipe-postgres-backups-${var.env_name}"
+  location      = var.gcs_region
+  storage_class = "COLDLINE"
 
   uniform_bucket_level_access = true
-
-  lifecycle_rule {
-    action {
-      type = "Delete"
-    }
-    condition {
-      age = 7
-    }
-  }
-
 }
 
 resource "google_service_account" "db_backup_sa" {

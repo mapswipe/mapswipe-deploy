@@ -118,29 +118,22 @@ services:
     labels:
       # NOTE: the cron format starts with seconds, instead of minutes. https://pkg.go.dev/github.com/robfig/cron?utm_source=godoc
       ofelia.enabled: "true"
-      # TODO: Update this?
-      # NOTE: Make sure to align this with the retention policies ./postgres/pgbackrest/pgbackrest.conf
-      # Incremental Backups every day (At 22:00)
-      ofelia.job-exec.incr.schedule: "0 0 22 * * *"
-      ofelia.job-exec.incr.command: sh -c "_ENV=${OFELIA_PROJECT_NAME?error} pgbackrest --stanza=main backup --type=incr"
-      ofelia.job-exec.incr.user: "postgres"
-      ofelia.job-exec.incr.no-overlap: 1
-      # Differential backup every week (At 02:30 on Monday)
-      ofelia.job-exec.diff.schedule: "0 30 2 * * 1"
-      ofelia.job-exec.diff.command: sh -c "_ENV=${OFELIA_PROJECT_NAME?error} pgbackrest --stanza=main backup --type=diff"
-      ofelia.job-exec.diff.user: "postgres"
-      ofelia.job-exec.diff.no-overlap: 1
+      # XXX: Make sure to align this with the retention policies ./postgres/pgbackrest/pgbackrest.conf
       # Full backup every month (At 10:00 on day-of-month 1)
       ofelia.job-exec.full.schedule: "0 0 10 1 * *"
       ofelia.job-exec.full.command: sh -c "_ENV=${OFELIA_PROJECT_NAME?error} pgbackrest --stanza=main backup --type=full"
       ofelia.job-exec.full.user: "postgres"
       ofelia.job-exec.full.no-overlap: 1
+      # Differential backup every week (At 02:30 on Monday)
+      ofelia.job-exec.diff.schedule: "0 30 2 * * 1"
+      ofelia.job-exec.diff.command: sh -c "_ENV=${OFELIA_PROJECT_NAME?error} pgbackrest --stanza=main backup --type=diff"
+      ofelia.job-exec.diff.user: "postgres"
+      ofelia.job-exec.diff.no-overlap: 1
       # Expire every day (At 01:30)
       ofelia.job-exec.expire.schedule: "0 30 01 * * *"
       ofelia.job-exec.expire.command: sh -c "_ENV=${OFELIA_PROJECT_NAME?error} pgbackrest --stanza=main expire"
       ofelia.job-exec.expire.user: "postgres"
       ofelia.job-exec.expire.no-overlap: 1
-      # TODO: validate?
     secrets:
       - pgbackrest_gc_service_account_key
     profiles:

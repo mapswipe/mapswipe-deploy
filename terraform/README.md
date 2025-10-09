@@ -19,3 +19,13 @@ terragrunt plan
 
 terragrunt apply
 ```
+
+### Prod
+
+```bash
+cd live/prod
+
+terragrunt plan
+
+terragrunt apply
+```

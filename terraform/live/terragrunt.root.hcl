@@ -19,7 +19,9 @@ remote_state {
 }
 
 inputs = {
-  env_name       = local.env_name
-  gcs_project_id = local.secrets_config.project_id_map[local.env_name]
-  gcs_region     = "EU"
+  env_name                     = local.env_name
+  gcs_billing_account_id       = local.secrets_config.gcs_billing_account_id
+  gcs_project_id               = local.secrets_config.project_id_map[local.env_name]
+  gcs_region                   = "EU"
+  togglecorp_dev_email_address = local.secrets_config.togglecorp_dev_email_address
 }

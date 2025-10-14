@@ -14,8 +14,7 @@ jobs:
           submodules: true
 
       - name: Generate fake ./terraform/live/secrets.auto.tfvars
-        run: |
-          echo "project_id_map = { stage = \"mapswipe-stage\", prod = \"mapswipe-prod\" }" > ./terraform/live/secrets.auto.tfvars
+        run: cp terraform/live/secrets-sample.auto.tfvars terraform/live/secrets.auto.tfvars
 
       # TODO: Cache plugins?
       - uses: terraform-linters/setup-tflint@v5

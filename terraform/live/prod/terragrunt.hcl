@@ -7,4 +7,5 @@ terraform {
 }
 
 inputs = {
+  budget_amount = 50
 }

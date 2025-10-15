@@ -1,3 +1,4 @@
 .terragrunt-cache
 .terraform
 *.tfvars
+!secrets-sample.auto.tfvars

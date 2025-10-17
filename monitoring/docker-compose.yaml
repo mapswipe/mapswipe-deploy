@@ -1,0 +1,26 @@
+services:
+  alloy:
+    image: grafana/alloy:latest
+    container_name: grafana_alloy
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:12345:12345'
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    env_file:
+      - .env
+    volumes:
+      # mount config file
+      - './config.alloy:/etc/alloy/config.alloy'
+      # give access to running docker containers for discovery.docker
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # give access to docker's log files directory (optional)
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      # Host
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro
+      - /var/log:/host/var/log:ro

@@ -1,0 +1,124 @@
+logging {
+    level  = "info"
+    format = "logfmt"
+}
+
+locals {
+    scrape_interval = "30s"
+
+    gc_prom_url = sys.env("GCLOUD_HOSTED_METRICS_URL")
+    gc_prom_id  = sys.env("GCLOUD_HOSTED_METRICS_ID")
+
+    gc_loki_url = sys.env("GCLOUD_HOSTED_LOGS_URL")
+    gc_loki_id  = sys.env("GCLOUD_HOSTED_LOGS_ID")
+
+    gc_api_key = sys.env("GCLOUD_RW_API_KEY")
+
+    hostname = env("HOSTNAME")
+
+    host_root = "/host/root"
+}
+
+// locals {
+//   scrape_interval = "15s"
+//   gc_prom_url     = "https://prometheus-prod-XX.grafana.net/api/prom/push"
+//   gc_loki_url     = "https://logs-prod-XX.grafana.net/loki/api/v1/push"
+//   gc_username     = "<YOUR_GRAFANA_CLOUD_USERNAME>"
+//   gc_api_key      = "<YOUR_GRAFANA_CLOUD_API_KEY>"
+//   host_root       = "/host/root"
+//   hostname        = env("HOSTNAME")
+// }
+
+// remotecfg {
+//     id             = sys.env("GCLOUD_FM_ID")
+//     url            = sys.env("GCLOUD_FM_URL")
+//     poll_frequency = sys.env("GCLOUD_FM_POLL_FREQUENCY")
+// 
+//     basic_auth {
+//         username = sys.env("GCLOUD_FM_HOSTED_ID")
+//         password = local.gc_api_key
+//     }
+// }
+
+otelcol.processor.resource "add_instance_label" {
+  attributes {
+    key    = "instance"
+    value  = local.hostname
+    action = "insert"
+  }
+}
+
+otelcol.receiver.hostmetrics "default" {
+  collection_interval = local.scrape_interval
+
+  scrapers = {
+    cpu      = {}
+    disk     = {
+      mount_point = local.host_root
+    }
+    filesystem = {
+      mount_point = local.host_root
+    }
+    load     = {}
+    memory   = {}
+    network  = {}
+    paging   = {}
+    uptime   = {}
+    processes = {}
+  }
+
+  root_path = local.host_root
+}
+
+otelcol.receiver.docker_stats "default" {
+  endpoint = "unix:///var/run/docker.sock"
+  collection_interval = local.scrape_interval
+}
+
+loki.source.docker "default" {
+  docker_host = "unix:///var/run/docker.sock"
+  labels = {
+    job       = "docker-logs"
+    instance  = local.hostname
+  }
+}
+
+otelcol.processor.batch "default" {}
+
+otelcol.exporter.prometheusremotewrite "grafana_cloud" {
+  endpoint = local.gc_prom_url
+  headers = {
+    "Authorization" = "Basic ${base64(local.gc_username + ":" + local.gc_api_key)}"
+  }
+}
+
+loki.exporter "grafana_cloud" {
+  endpoint = local.gc_loki_url
+  labels = {
+    job      = "container-logs"
+    hostname = local.hostname
+  }
+  tenant_id = local.gc_username
+  basic_auth {
+    username = local.gc_username
+    password = local.gc_api_key
+  }
+}
+
+otelcol.service "metrics" {
+  pipelines = {
+    metrics = {
+      receivers  = [
+        otelcol.receiver.hostmetrics.default,
+        otelcol.receiver.docker_stats.default,
+      ]
+      processors = [otelcol.processor.batch.default]
+      exporters  = [otelcol.exporter.prometheusremotewrite.grafana_cloud]
+    }
+  }
+}
+
+loki.service "logs" {
+  sources   = [loki.source.docker.default]
+  exporters = [loki.exporter.grafana_cloud]
+}

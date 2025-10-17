@@ -4,11 +4,11 @@ version: '3'
 
 env:
   MANAGER_DASHBOARD_COMMIT_HASH:
-    sh: ./scripts/get_commit_hash.sh .git/modules/manager-dashboard
+    sh: ./scripts/get-commit-hash.sh .git/modules/manager-dashboard
   COMMUNITY_DASHBOARD_COMMIT_HASH:
-    sh: ./scripts/get_commit_hash.sh .git/modules/community-dashboard
+    sh: ./scripts/get-commit-hash.sh .git/modules/community-dashboard
   BACKEND_COMMIT_HASH:
-    sh: ./scripts/get_commit_hash.sh .git/modules/mapswipe-backend
+    sh: ./scripts/get-commit-hash.sh .git/modules/mapswipe-backend
 
 tasks:
   # Web apps

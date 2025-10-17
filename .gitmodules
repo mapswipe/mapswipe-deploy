@@ -1,15 +1,19 @@
 [submodule "mapswipe-firebase"]
-	path = firebase
-	url = git@github.com:mapswipe/mapswipe-firebase.git
+    path = firebase
+    url = git@github.com:mapswipe/mapswipe-firebase.git
+    branch = v0.2.3
 [submodule "mapswipe-backend"]
-	path = backend
-	url = git@github.com:mapswipe/mapswipe-backend.git
+    path = backend
+    url = git@github.com:mapswipe/mapswipe-backend.git
+    branch = v0.2.4
 [submodule "community-dashboard"]
-	path = community-dashboard
-	url = git@github.com:mapswipe/community-dashboard.git
+    path = community-dashboard
+    url = git@github.com:mapswipe/community-dashboard.git
+    branch = v0.2.2
 [submodule "manager-dashboard"]
-	path = manager-dashboard
-	url = git@github.com:mapswipe/manager-dashboard.git
+    path = manager-dashboard
+    url = git@github.com:mapswipe/manager-dashboard.git
+    branch = v0.2.3
 [submodule "website"]
-	path = website
-	url = git@github.com:mapswipe/website.git
+    path = website
+    url = git@github.com:mapswipe/website.git

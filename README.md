@@ -1,3 +1,9 @@
+## New release
+
+- Update `.gitmodules` file to include the correct `branch` tags
+- Run `scripts/sub-module-sync.sh` to refresh submodule references
+- Commit the changes and push to the repository
+
 ## Setup
 
 ### Cloning the Repository

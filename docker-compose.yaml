@@ -37,6 +37,7 @@ x-server: &base_server_setup
     # Storage
     MEDIA_ROOT: "/data/media"
     STATIC_ROOT: "/data/static"
+    INTERNAL_ROOT: "/data/internal"
     MEDIA_URL: "media/"
     STATIC_URL: "static/"
   env_file:
@@ -46,6 +47,7 @@ x-server: &base_server_setup
   volumes:
     - ./data/backend/static:/data/static
     - ./data/backend/media:/data/media
+    - ./data/backend/internal:/data/internal
     - ipython_data_local:/root/.ipython/profile_default   # persist ipython data, including ipython history
   depends_on:
     - postgres

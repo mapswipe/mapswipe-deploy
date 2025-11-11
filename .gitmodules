@@ -5,7 +5,7 @@
 [submodule "mapswipe-backend"]
     path = backend
     url = git@github.com:mapswipe/mapswipe-backend.git
-    branch = v0.2.9
+    branch = v0.2.10
 [submodule "community-dashboard"]
     path = community-dashboard
     url = git@github.com:mapswipe/community-dashboard.git
@@ -13,4 +13,4 @@
 [submodule "manager-dashboard"]
     path = manager-dashboard
     url = git@github.com:mapswipe/manager-dashboard.git
-    branch = v0.2.4
+    branch = v0.2.5

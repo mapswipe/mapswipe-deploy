@@ -12,6 +12,11 @@
         max_size 10MB
     }
 
+    @download {
+        path /media/*
+        query treat_as_download=true
+    }
+
     @isStatic {
         path /static/* /media/*
     }
@@ -27,6 +32,11 @@
         Access-Control-Allow-Origin "*"
         Access-Control-Request-Methods "GET"
         Access-Control-Allow-Headers Content-Type
+    }
+
+    # Allow website to have download feature for files which browser can open (eg: json)
+    header @download {
+        Content-Disposition "attachment; filename={http.request.uri.path.file}"
     }
 }
 

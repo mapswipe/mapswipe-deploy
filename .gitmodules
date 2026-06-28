@@ -13,4 +13,4 @@
 [submodule "manager-dashboard"]
     path = manager-dashboard
     url = git@github.com:mapswipe/manager-dashboard.git
-    branch = v0.3.3
+    branch = v0.3.4

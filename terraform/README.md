@@ -5,12 +5,23 @@
 
 ## Apply changes
 
+### Google Auth
+
+Using profile
+```bash
+gcloud config configurations activate <profile>
+
+export GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token)
+```
+
+Using ADC
+```bash
+gcloud auth application-default login
+```
+
 ### Stage
 
 ```bash
-# Google auth
-gcloud auth application-default login
-
 # Enable some api if not already
 gcloud services enable storage.googleapis.com --project=YOUR_PROJECT_ID
 gcloud services enable cloudresourcemanager.googleapis.com --project=YOUR_PROJECT_ID

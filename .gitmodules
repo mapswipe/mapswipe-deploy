@@ -14,3 +14,7 @@
     path = manager-dashboard
     url = git@github.com:mapswipe/manager-dashboard.git
     branch = v0.3.5
+[submodule "mapswipe-web"]
+    path = mapswipe-web
+    url = git@github.com:mapswipe/mapswipe-web.git
+    branch = v0.3.4

@@ -55,13 +55,6 @@ x-server: &base_server_setup
   profiles:
     - core
 
-
-x-worker: &base_worker_setup
-  <<: *base_server_setup
-  environment:
-    <<: *base_server_environments
-    APP_TYPE: "WORKER-BEAT"
-
 services:
   ofelia:
     image: mcuadros/ofelia:0.3.17
@@ -162,12 +155,18 @@ services:
     command: bash -c "/code/misc/prod/run_web.sh"
 
   worker-beat:
-    <<: *base_worker_setup
+    <<: *base_server_setup
     command: bash -c "/code/misc/prod/run_worker_beat.sh"
+    environment:
+      <<: *base_server_environments
+      APP_TYPE: "WORKER-BEAT"
 
   worker:
-    <<: *base_worker_setup
+    <<: *base_server_setup
     command: bash -c "/code/misc/prod/run_worker.sh"
+    environment:
+      <<: *base_server_environments
+      APP_TYPE: "WORKER"
 
   # Manager Dashboard
   manager-dashboard:

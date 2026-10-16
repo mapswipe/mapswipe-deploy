@@ -9,11 +9,11 @@
 [submodule "community-dashboard"]
     path = community-dashboard
     url = git@github.com:mapswipe/community-dashboard.git
-    branch = v0.3.1
+    branch = v0.3.2
 [submodule "manager-dashboard"]
     path = manager-dashboard
     url = git@github.com:mapswipe/manager-dashboard.git
-    branch = v0.3.5
+    branch = v0.3.6
 [submodule "mapswipe-web"]
     path = mapswipe-web
     url = git@github.com:mapswipe/mapswipe-web.git
